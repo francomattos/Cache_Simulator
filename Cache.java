@@ -46,7 +46,7 @@ public class Cache {
     if (opCode.equals("r")) {
       readAddress(binaryAddress, address_index_integer, address_tag, nextCache);
     } else {
-      writeAddress();
+      writeAddress(binaryAddress, address_index_integer, address_tag, nextCache, opCode);
     }
   }
 
@@ -71,7 +71,23 @@ public class Cache {
     return address_tag;
   }
 
-  public void writeAddress() {
+  public void writeAddress(String binaryAddress, int address_index_integer, String address_tag, Cache nextCache,
+      String opCode) {
+    for (int assoc_index = 0; assoc_index < cache_assoc; assoc_index++) {
+      if (cache_memory[assoc_index][address_index_integer].compareTo(address_tag) == 0) {
+        writeHits++;
+        // *******
+        // ACCOUNT FOR LAST ACCESSED ITEM HERE
+        // *******
+        return;
+      } else if (cache_memory[assoc_index][address_index_integer] == null) {
+        // *******
+        // Case where there is empty space, just write.
+        // *******
+        return;
+      }
+    }
+    writeMisses++;
 
   }
 
