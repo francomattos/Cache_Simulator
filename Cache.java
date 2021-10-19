@@ -35,7 +35,9 @@ public class Cache {
 
   }
 
-  public void checkCache(String opCode, String binaryAddress, Cache nextCache) {
+  public void checkCache(int traceIndex, TraceObject[] traceList, Cache nextCache) {
+    String opCode = traceList[traceIndex].opCode;
+    String binaryAddress = traceList[traceIndex].binaryAddress;
     // String address_block_offset = binaryAddress.substring(31 - block_offset);
     String address_index = binaryAddress.substring(31 - (index + block_offset), 31 - block_offset);
     String address_tag = binaryAddress.substring(0, 31 - (index + block_offset));
@@ -63,7 +65,7 @@ public class Cache {
     readMisses++;
     // If there is a lower cache, check if there.
     if (nextCache != null) {
-      nextCache.checkCache("r", binaryAddress, null);
+      // nextCache.checkCache("r", binaryAddress, null);
     }
     // *******
     // Call write address here, account for the fact it comes from a read miss.

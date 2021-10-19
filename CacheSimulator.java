@@ -1,4 +1,5 @@
 import java.io.File;
+import java.nio.file.*;
 import java.util.Scanner;
 
 public class CacheSimulator {
@@ -35,12 +36,19 @@ public class CacheSimulator {
     startSimulation();
   }
 
-  // Loads file and begins simulation process
+  // Loads file and begins simulation process.
   public void startSimulation() {
-    // Loads file
+    // Loads file.
     File traceFile = new File(trace_file);
 
     try {
+      // Reads number of lines in file.
+      int traceFileLines = (int) Files.lines(Paths.get(trace_file)).count();
+      // Initializes array of objects to keep trace data.
+      TraceObject traceList[] = new TraceObject[traceFileLines];
+      // Sets index to keep track of tracelist.
+      int traceIndex = 0;
+      // Begin reading file.
       Scanner traceFileRead = new Scanner(traceFile);
 
       // Goes through each line of file, extracts opcode and address.
@@ -48,12 +56,15 @@ public class CacheSimulator {
         String[] traceFileLine = traceFileRead.nextLine().split(" ");
         String opCode = traceFileLine[0];
         String hexAddress = traceFileLine[1];
-
-        // Sends operation for first cache to handle
-        this.l1_cache.checkCache(opCode, hexToBinary(hexAddress), l2_cache);
+        traceList[traceIndex] = new TraceObject(opCode, hexToBinary(hexAddress));
+        traceIndex++;
       }
-
       traceFileRead.close();
+
+      // Sends operation for first cache to handle
+      for (int i = 0; i < traceFileLines; i++) {
+        this.l1_cache.checkCache(i, traceList, l2_cache);
+      }
 
     } catch (Exception e) {
       System.out.println("Unable to open file");
@@ -73,4 +84,14 @@ public class CacheSimulator {
     return binaryString;
   }
 
+}
+
+class TraceObject {
+  String opCode;
+  String binaryAddress;
+
+  TraceObject(String opCode, String binaryAddress) {
+    this.opCode = opCode;
+    this.binaryAddress = binaryAddress;
+  }
 }
