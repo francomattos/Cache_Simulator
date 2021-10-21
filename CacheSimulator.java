@@ -7,6 +7,7 @@ public class CacheSimulator {
   public String trace_file;
   Cache l1_cache = null;
   Cache l2_cache = null;
+  private int trace_file_lines;
 
   // Initiates variable when class is instantiated,
   public CacheSimulator(String[] args) {
@@ -25,52 +26,66 @@ public class CacheSimulator {
     int l2_assoc = Integer.parseInt(args[4]);
     int replacement_policy = Integer.parseInt(args[5]);
     int inclusion_property = Integer.parseInt(args[6]);
-    this.trace_file = args[7];
 
-    // Create simulated cache
-    this.l1_cache = new Cache(block_size, l1_size, l1_assoc, replacement_policy, inclusion_property);
-    if (l2_size > 0) {
-      this.l2_cache = new Cache(block_size, l2_size, l2_assoc, replacement_policy, inclusion_property);
+    if ((block_size & block_size - 1) != 0) {
+      System.out.println("Blocksize must be power of 2");
+      System.exit(0);
     }
 
-    startSimulation();
+    String trace_file_name = args[7];
+    TraceObject trace_list[] = loadFile(trace_file_name);
+
+    // Create simulated cache
+    this.l1_cache = new Cache(block_size, l1_size, l1_assoc, replacement_policy, inclusion_property, trace_list);
+    if (l2_size > 0) {
+      this.l2_cache = new Cache(block_size, l2_size, l2_assoc, replacement_policy, inclusion_property, trace_list);
+    }
+
+    // Sends index of operation for first cache to handle
+    for (int i = 0; i < this.trace_file_lines; i++) {
+      this.l1_cache.checkCache(i, l2_cache);
+    }
   }
 
-  // Loads file and begins simulation process.
-  public void startSimulation() {
+  private TraceObject[] loadFile(String trace_file_name) {
     // Loads file.
-    File traceFile = new File(trace_file);
-
+    File trace_file = new File(trace_file_name);
+    TraceObject trace_list[];
     try {
       // Reads number of lines in file.
-      int traceFileLines = (int) Files.lines(Paths.get(trace_file)).count();
-      // Initializes array of objects to keep trace data.
-      TraceObject traceList[] = new TraceObject[traceFileLines];
-      // Sets index to keep track of tracelist.
-      int traceIndex = 0;
-      // Begin reading file.
-      Scanner traceFileRead = new Scanner(traceFile);
-
-      // Goes through each line of file, extracts opcode and address.
-      while (traceFileRead.hasNextLine()) {
-        String[] traceFileLine = traceFileRead.nextLine().split(" ");
-        String opCode = traceFileLine[0];
-        String hexAddress = traceFileLine[1];
-        traceList[traceIndex] = new TraceObject(opCode, hexToBinary(hexAddress));
-        traceIndex++;
-      }
-      traceFileRead.close();
-
-      // Sends operation for first cache to handle
-      for (int i = 0; i < traceFileLines; i++) {
-        this.l1_cache.checkCache(i, traceList, l2_cache);
-      }
+      this.trace_file_lines = (int) Files.lines(Paths.get(trace_file_name)).count();
 
     } catch (Exception e) {
       System.out.println("Unable to open file");
       System.out.println("Error: " + e);
       System.exit(0);
     }
+    // Initializes array of objects to keep trace data.
+    trace_list = new TraceObject[this.trace_file_lines];
+    // Sets index to keep track of tracelist.
+    int trace_index = 0;
+
+    try {
+      // Begin reading file.
+      Scanner trace_file_read = new Scanner(trace_file);
+
+      // Goes through each line of file, extracts opcode and address.
+      while (trace_file_read.hasNextLine()) {
+        String[] trace_file_line = trace_file_read.nextLine().split(" ");
+        String op_code = trace_file_line[0];
+        String hex_address = trace_file_line[1];
+        trace_list[trace_index] = new TraceObject(op_code, hexToBinary(hex_address));
+        trace_index++;
+      }
+      trace_file_read.close();
+
+    } catch (Exception e) {
+      System.out.println("Unable to open file");
+      System.out.println("Error: " + e);
+      System.exit(0);
+    }
+
+    return trace_list;
   }
 
   public String hexToBinary(String hexAddress) {
