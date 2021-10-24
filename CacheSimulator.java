@@ -42,7 +42,7 @@ public class CacheSimulator {
     }
 
     // Sends index of operation for first cache to handle
-    for (int i = 0; i < this.trace_file_lines; i++) {
+    for (int i = 0; i < trace_list.length; i++) {
       this.l1_cache.checkCache(i, l2_cache);
     }
   }
