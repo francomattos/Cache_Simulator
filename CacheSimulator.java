@@ -4,7 +4,7 @@ import java.util.Scanner;
 
 public class CacheSimulator {
   // Variables used to handle cache parameters,
-  public String trace_file;
+  // public String trace_file;
   Cache l1_cache = null;
   Cache l2_cache = null;
   private int trace_file_lines;
