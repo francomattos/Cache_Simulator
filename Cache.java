@@ -66,9 +66,9 @@ public class Cache {
   }
 
   public void checkCache(int trace_index, Cache next_cache) {
-    String binary_address = this.trace_list[trace_index].binaryAddress;
+    String binary_address = this.trace_list[trace_index].binary_address;
 
-    // String address_block_offset = binaryAddress.substring(31 - block_offset);
+    // Get index and tag.
     String address_index = binary_address.substring(31 - (this.index_offset + this.block_offset),
         31 - this.block_offset);
     String address_tag = binary_address.substring(0, 31 - (this.index_offset + this.block_offset));
@@ -77,31 +77,29 @@ public class Cache {
     // index.
     int address_index_integer = Integer.parseInt(address_index, 2);
 
-    if (this.trace_list[trace_index].opCode.equals("r")) {
+    if (this.trace_list[trace_index].op_code.equals("r")) {
       readAddress(binary_address, address_index_integer, trace_index, address_tag, next_cache);
     } else {
       writeAddress(binary_address, address_index_integer, address_tag, next_cache);
     }
   }
+  // INCLUSION_PROPERTY: Positive integer. 0 for non-inclusive, 1 for inclusive.
+  private String readAddress(String binary_address, int address_index_integer, int trace_index, String address_tag,
+      Cache next_cache) {
 
-  public String readAddress(String binary_address, int address_index_integer, int trace_index, String address_tag,
-      Cache nextCache) {
-
-    lru_object.cacheAccess(0, address_index_integer, trace_index, binary_address);
-    lru_object.getLRU(0);
+    // lru_object.getLRU(0);
     for (int assoc_index = 0; assoc_index < cache_assoc; assoc_index++) {
       if (cache_memory[assoc_index][address_index_integer] != null
           && cache_memory[assoc_index][address_index_integer].compareTo(address_tag) == 0) {
+        // If found, update read hits and mark access in LRU.
         read_hits++;
-        // *******
-        // ACCOUNT FOR LAST ACCESSED ITEM HERE
-        // *******
+        lru_object.cacheAccess(assoc_index, address_index_integer, trace_index, binary_address);
         return address_tag;
       }
     }
     read_misses++;
     // If there is a lower cache, check if there.
-    if (nextCache != null) {
+    if (next_cache != null) {
       // nextCache.checkCache("r", binaryAddress, null);
     }
     // *******
@@ -110,7 +108,7 @@ public class Cache {
     return address_tag;
   }
 
-  public void writeAddress(String binaryAddress, int address_index_integer, String address_tag, Cache nextCache) {
+  public void writeAddress(String binary_address, int address_index_integer, String address_tag, Cache next_cache) {
     for (int assoc_index = 0; assoc_index < cache_assoc; assoc_index++) {
       if (cache_memory[assoc_index][address_index_integer] != null
           && cache_memory[assoc_index][address_index_integer].compareTo(address_tag) == 0) {
@@ -159,15 +157,15 @@ class BasicLRU extends LRU implements LRUInterface {
   // When accessing block, assign counter value to set, making it largest.
   public void cacheAccess(int cache_assoc, int address_index_integer, int traceIndex, String binary_address) {
     this.counters++;
-    super.lru_list[cache_assoc][address_index_integer] = this.counters;
+    lru_list[cache_assoc][address_index_integer] = this.counters;
   }
 
   // Sets LRU as the first set, then loop through set values looking for lowest
   // value.
   public int getLRU(int cache_assoc) {
-    int lru_results = super.lru_list[cache_assoc][0];
+    int lru_results = lru_list[cache_assoc][0];
     for (int i = 1; i < sets; i++) {
-      if (super.lru_list[cache_assoc][i] < lru_results) {
+      if (lru_list[cache_assoc][i] < lru_results) {
         lru_results = i;
       }
     }
@@ -257,11 +255,11 @@ class OptimalLRU extends LRU implements LRUInterface {
   //
   public void cacheAccess(int cache_assoc, int address_index_integer, int trace_index, String binary_address) {
     // We will look for 0 values as possibility of replacement, this is placeholder.
-    super.lru_list[cache_assoc][address_index_integer] = 0;
+    lru_list[cache_assoc][address_index_integer] = 0;
     // Loop through trace_list to find next occurance of address.
     for (int i = trace_index; i < this.trace_list.length; i++) {
-      if (this.trace_list[i].binaryAddress.compareTo(binary_address) == 0) {
-        super.lru_list[cache_assoc][address_index_integer] = i;
+      if (this.trace_list[i].binary_address.compareTo(binary_address) == 0) {
+        lru_list[cache_assoc][address_index_integer] = i;
         break;
       }
     }

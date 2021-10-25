@@ -88,25 +88,24 @@ public class CacheSimulator {
     return trace_list;
   }
 
-  public String hexToBinary(String hexAddress) {
+  public String hexToBinary(String hex_address) {
     // Converts hex to decimal, then converts decimal to a binary string.
-    long decimalRepresentation = (Long.parseLong(hexAddress.toUpperCase(), 16));
-    String binaryString = Long.toBinaryString(decimalRepresentation);
-    // Some adds leading zeroes because some input hex values omit them
-    while (binaryString.length() < 31) {
-      binaryString = "0" + binaryString;
+    long decimal_representation = (Long.parseLong(hex_address.toUpperCase(), 16));
+    String binary_string = Long.toBinaryString(decimal_representation);
+    // Adds leading zeroes because some input hex values omit them
+    while (binary_string.length() < 31) {
+      binary_string = "0" + binary_string;
     }
-    return binaryString;
+    return binary_string;
   }
-
 }
 
 class TraceObject {
-  String opCode;
-  String binaryAddress;
+  String op_code;
+  String binary_address;
 
-  TraceObject(String opCode, String binaryAddress) {
-    this.opCode = opCode;
-    this.binaryAddress = binaryAddress;
+  TraceObject(String op_code, String binary_address) {
+    this.op_code = op_code;
+    this.binary_address = binary_address;
   }
 }
