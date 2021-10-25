@@ -157,123 +157,123 @@ public class Cache {
   // }
   // write_misses++;
   // }
-  // }
+}
 
-  // Basic LRU, used as parent so all other LRU types can inherit
-  class LRU {
-    int[][] lru_list;
-    int sets;
-    int cache_assoc;
+// Basic LRU, used as parent so all other LRU types can inherit
+class LRU {
+  int[][] lru_list;
+  int sets;
+  int cache_assoc;
 
-    LRU(int cache_assoc, int sets) {
-      // Creates storage for hits
-      this.lru_list = new int[cache_assoc][sets];
-      this.sets = sets;
-      this.cache_assoc = cache_assoc;
+  LRU(int cache_assoc, int sets) {
+    // Creates storage for hits
+    this.lru_list = new int[cache_assoc][sets];
+    this.sets = sets;
+    this.cache_assoc = cache_assoc;
+  }
+}
+
+interface LRUInterface {
+  public void cacheAccess(int assoc_index, int address_index_integer, int traceIndex, String binary_address);
+
+  public int getLRU(int address_index_integer);
+}
+
+// BasicLRU type, increments counter and find smallest one as the LRU.
+class BasicLRU extends LRU implements LRUInterface {
+  int counters;
+
+  public BasicLRU(int cache_assoc, int sets) {
+    super(cache_assoc, sets);
+  }
+
+  // When accessing block, assign counter value to set, making it largest.
+  public void cacheAccess(int assoc_index, int address_index_integer, int traceIndex, String binary_address) {
+    this.counters++;
+    lru_list[assoc_index][address_index_integer] = this.counters;
+  }
+
+  // Sets LRU as the first set, then loop through set values looking for lowest
+  // value.
+  public int getLRU(int address_index_integer) {
+    int lru_results = lru_list[0][address_index_integer];
+    for (int i = 1; i < sets; i++) {
+      if (lru_list[i][address_index_integer] < lru_results) {
+        lru_results = i;
+      }
+    }
+    return lru_results;
+  }
+}
+
+// PseudoLRU type, uses tree structure to find LRU.
+class PseudoLRU extends LRU implements LRUInterface {
+  int[][] pseudo_lru_tree;
+
+  public PseudoLRU(int cache_assoc, int sets) {
+    // Reverts order or cache assoc and sets.
+    super(sets, cache_assoc);
+    // Initiates all values to 1, so when we look for free we look to left.
+    for (int[] fill_array : lru_list) {
+      Arrays.fill(fill_array, 1);
     }
   }
 
-  interface LRUInterface {
-    public void cacheAccess(int assoc_index, int address_index_integer, int traceIndex, String binary_address);
-
-    public int getLRU(int address_index_integer);
+  // When accessing block, marks latest access to the set
+  public void cacheAccess(int assoc_index, int address_index_integer, int traceIndex, String binary_address) {
+    setCacheAccess(address_index_integer, 0, this.cache_assoc - 1, assoc_index);
   }
 
-  // BasicLRU type, increments counter and find smallest one as the LRU.
-  class BasicLRU extends LRU implements LRUInterface {
-    int counters;
+  public int getLRU(int address_index_integer) {
+    return getPseudoLRU(address_index_integer, 0, this.cache_assoc - 1);
+  }
 
-    public BasicLRU(int cache_assoc, int sets) {
-      super(cache_assoc, sets);
-    }
+  // Essentially a binary search setting the values to 0 and 1 as it finds the
+  // address index.
+  private void setCacheAccess(int address_index_integer, int left_index, int right_index, int assoc_index) {
+    // Left and right index will be getting closer, eventually crossing when at end
+    // of tree.
+    if (right_index >= left_index) {
+      int mid = left_index + (right_index - left_index) / 2;
 
-    // When accessing block, assign counter value to set, making it largest.
-    public void cacheAccess(int assoc_index, int address_index_integer, int traceIndex, String binary_address) {
-      this.counters++;
-      lru_list[assoc_index][address_index_integer] = this.counters;
-    }
-
-    // Sets LRU as the first set, then loop through set values looking for lowest
-    // value.
-    public int getLRU(int address_index_integer) {
-      int lru_results = lru_list[0][address_index_integer];
-      for (int i = 1; i < sets; i++) {
-        if (lru_list[i][address_index_integer] < lru_results) {
-          lru_results = i;
-        }
+      // If value is to left of mid index mark as 0, if to right mark as 1.
+      // Recursive call to that branch of tree.
+      if (assoc_index <= mid) {
+        lru_list[address_index_integer][mid] = 0;
+        setCacheAccess(address_index_integer, left_index, mid - 1, assoc_index);
+      } else {
+        lru_list[address_index_integer][mid] = 1;
+        setCacheAccess(address_index_integer, mid + 1, right_index, assoc_index);
       }
-      return lru_results;
     }
   }
 
-  // PseudoLRU type, uses tree structure to find LRU.
-  class PseudoLRU extends LRU implements LRUInterface {
-    int[][] pseudo_lru_tree;
-
-    public PseudoLRU(int cache_assoc, int sets) {
-      // Reverts order or cache assoc and sets.
-      super(sets, cache_assoc);
-      // Initiates all values to 1, so when we look for free we look to left.
-      for (int[] fill_array : lru_list) {
-        Arrays.fill(fill_array, 1);
+  private int getPseudoLRU(int address_index_integer, int left_index, int right_index) {
+    // Same logic as above, implemented as while loop.
+    int mid = 0;
+    // Right and left index are converging in this loop.
+    while (right_index >= left_index) {
+      // Pick mid point of array.
+      mid = left_index + (right_index - left_index) / 2;
+      // If value 1, go left, if 0, go right
+      if (lru_list[address_index_integer][mid] == 1) {
+        lru_list[address_index_integer][mid] = 0;
+        right_index = mid - 1;
+      } else {
+        lru_list[address_index_integer][mid] = 1;
+        left_index = mid + 1;
       }
     }
-
-    // When accessing block, marks latest access to the set
-    public void cacheAccess(int assoc_index, int address_index_integer, int traceIndex, String binary_address) {
-      setCacheAccess(address_index_integer, 0, this.cache_assoc - 1, assoc_index);
+    // After converging, return value.
+    if (mid >= cache_assoc) {
+      mid = cache_assoc - 1;
     }
-
-    public int getLRU(int address_index_integer) {
-      return getPseudoLRU(address_index_integer, 0, this.cache_assoc - 1);
-    }
-
-    // Essentially a binary search setting the values to 0 and 1 as it finds the
-    // address index.
-    private void setCacheAccess(int address_index_integer, int left_index, int right_index, int assoc_index) {
-      // Left and right index will be getting closer, eventually crossing when at end
-      // of tree.
-      if (right_index >= left_index) {
-        int mid = left_index + (right_index - left_index) / 2;
-
-        // If value is to left of mid index mark as 0, if to right mark as 1.
-        // Recursive call to that branch of tree.
-        if (assoc_index <= mid) {
-          lru_list[address_index_integer][mid] = 0;
-          setCacheAccess(address_index_integer, left_index, mid - 1, assoc_index);
-        } else {
-          lru_list[address_index_integer][mid] = 1;
-          setCacheAccess(address_index_integer, mid + 1, right_index, assoc_index);
-        }
-      }
-    }
-
-    private int getPseudoLRU(int address_index_integer, int left_index, int right_index) {
-      // Same logic as above, implemented as while loop.
-      int mid = 0;
-      // Right and left index are converging in this loop.
-      while (right_index >= left_index) {
-        // Pick mid point of array.
-        mid = left_index + (right_index - left_index) / 2;
-        // If value 1, go left, if 0, go right
-        if (lru_list[address_index_integer][mid] == 1) {
-          lru_list[address_index_integer][mid] = 0;
-          right_index = mid - 1;
-        } else {
-          lru_list[address_index_integer][mid] = 1;
-          left_index = mid + 1;
-        }
-      }
-      // After converging, return value.
-      if (mid >= cache_assoc) {
-        mid = cache_assoc - 1;
-      }
-      return mid + lru_list[address_index_integer][mid];
-    }
-
+    return mid + lru_list[address_index_integer][mid];
   }
 
-  // OptimalLRU type, Looks into future for LRU.
+}
+
+// OptimalLRU type, Looks into future for LRU.
 class OptimalLRU extends LRU implements LRUInterface {
   TraceObject trace_list[];
 
