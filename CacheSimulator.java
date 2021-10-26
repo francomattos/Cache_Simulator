@@ -98,6 +98,17 @@ public class CacheSimulator {
     }
     return binary_string;
   }
+
+  public String binaryToHex(String binary_address) {
+    // Regex to remove leading zeros from a string
+    String regex = "^0+(?!$)";
+
+    // Replaces the matched value with given string
+    binary_address = binary_address.replaceAll(regex, "");
+    int decimal_string = Integer.parseInt(binary_address, 2);
+    String hex_string = Integer.toString(decimal_string, 16);
+    return hex_string;
+  }
 }
 
 class TraceObject {
@@ -108,4 +119,5 @@ class TraceObject {
     this.op_code = op_code;
     this.binary_address = binary_address;
   }
+
 }

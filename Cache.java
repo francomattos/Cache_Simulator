@@ -75,88 +75,38 @@ public class Cache {
     // Converts binary address_index to an integer number since we will use it as an
     // index.
     int address_index_integer = Integer.parseInt(address_index, 2);
+    int assoc_index;
 
     // INCLUSION_PROPERTY: Positive integer. 0 for non-inclusive, 1 for inclusive.
-
-    // if (this.trace_list[trace_index].op_code.equals("r")) {
-    // readAddress(binary_address, address_index_integer, trace_index, address_tag,
-    // next_cache);
-    // } else {
-    // writeAddress(binary_address, address_index_integer, address_tag, next_cache);
-    // }
-    // lru_object.getLRU(address_index_integer);
-
-    for (int assoc_index = 0; assoc_index < this.cache_assoc; assoc_index++) {
+    for (assoc_index = 0; assoc_index < this.cache_assoc; assoc_index++) {
       if (cache_memory[assoc_index][address_index_integer] != null
           && cache_memory[assoc_index][address_index_integer].compareTo(address_tag) == 0) {
         // If found, update read hits and mark access in LRU.
         if (this.trace_list[trace_index].op_code.equals("r")) {
-          read_hits++;
+          this.read_hits++;
         } else {
-          write_hits++;
+          this.write_hits++;
         }
+        System.out.println("Hit");
         lru_object.cacheAccess(assoc_index, address_index_integer, trace_index, binary_address);
         return address_tag;
       }
     }
-    read_misses++;
-    // If there is a lower cache, check if there.
-    if (next_cache != null) {
-      // nextCache.checkCache("r", binaryAddress, null);
+    if (this.trace_list[trace_index].op_code.equals("r")) {
+      this.read_misses++;
+    } else {
+      this.write_misses++;
     }
+    System.out.println("Miss");
     // *******
-    // Call write address here, account for the fact it comes from a read miss.
+    // What to do if a miss here. The following code is placeholder
     // *******
+    assoc_index = lru_object.getLRU(address_index_integer);
+    lru_object.cacheAccess(assoc_index, address_index_integer, trace_index, binary_address);
+    cache_memory[assoc_index][address_index_integer] = address_tag;
+
     return address_tag;
   }
-
-  // private String readAddress(String binary_address, int address_index_integer,
-  // int trace_index, String address_tag,
-  // Cache next_cache) {
-
-  // // lru_object.getLRU(0);
-  // for (int assoc_index = 0; assoc_index < cache_assoc; assoc_index++) {
-  // if (cache_memory[assoc_index][address_index_integer] != null
-  // && cache_memory[assoc_index][address_index_integer].compareTo(address_tag) ==
-  // 0) {
-  // // If found, update read hits and mark access in LRU.
-  // read_hits++;
-  // lru_object.cacheAccess(assoc_index, address_index_integer, trace_index,
-  // binary_address);
-  // return address_tag;
-  // }
-  // }
-  // read_misses++;
-  // // If there is a lower cache, check if there.
-  // if (next_cache != null) {
-  // // nextCache.checkCache("r", binaryAddress, null);
-  // }
-  // // *******
-  // // Call write address here, account for the fact it comes from a read miss.
-  // // *******
-  // return address_tag;
-  // }
-
-  // public void writeAddress(String binary_address, int address_index_integer,
-  // String address_tag, Cache next_cache) {
-  // for (int assoc_index = 0; assoc_index < cache_assoc; assoc_index++) {
-  // if (cache_memory[assoc_index][address_index_integer] != null
-  // && cache_memory[assoc_index][address_index_integer].compareTo(address_tag) ==
-  // 0) {
-  // write_hits++;
-  // // *******
-  // // ACCOUNT FOR LAST ACCESSED ITEM HERE
-  // // *******
-  // return;
-  // } else if (cache_memory[assoc_index][address_index_integer] == null) {
-  // // *******
-  // // Case where there is empty space, just write.
-  // // *******
-  // return;
-  // }
-  // }
-  // write_misses++;
-  // }
 }
 
 // Basic LRU, used as parent so all other LRU types can inherit
@@ -197,7 +147,7 @@ class BasicLRU extends LRU implements LRUInterface {
   // value.
   public int getLRU(int address_index_integer) {
     int lru_results = lru_list[0][address_index_integer];
-    for (int i = 1; i < sets; i++) {
+    for (int i = 1; i < super.cache_assoc; i++) {
       if (lru_list[i][address_index_integer] < lru_results) {
         lru_results = i;
       }
@@ -208,24 +158,23 @@ class BasicLRU extends LRU implements LRUInterface {
 
 // PseudoLRU type, uses tree structure to find LRU.
 class PseudoLRU extends LRU implements LRUInterface {
-  int[][] pseudo_lru_tree;
 
   public PseudoLRU(int cache_assoc, int sets) {
     // Reverts order or cache assoc and sets.
     super(sets, cache_assoc);
     // Initiates all values to 1, so when we look for free we look to left.
-    for (int[] fill_array : lru_list) {
+    for (int[] fill_array : super.lru_list) {
       Arrays.fill(fill_array, 1);
     }
   }
 
   // When accessing block, marks latest access to the set
   public void cacheAccess(int assoc_index, int address_index_integer, int traceIndex, String binary_address) {
-    setCacheAccess(address_index_integer, 0, this.cache_assoc - 1, assoc_index);
+    setCacheAccess(address_index_integer, 0, super.sets - 1, assoc_index);
   }
 
   public int getLRU(int address_index_integer) {
-    return getPseudoLRU(address_index_integer, 0, this.cache_assoc - 1);
+    return getPseudoLRU(address_index_integer, 0, super.sets - 1);
   }
 
   // Essentially a binary search setting the values to 0 and 1 as it finds the
@@ -296,7 +245,9 @@ class OptimalLRU extends LRU implements LRUInterface {
   }
 
   public int getLRU(int address_index_integer) {
+    // Sets default to 0 for never accessed or empty blocks.
     int next_LRU = 0;
+    // Finds block with access furthest in the future.
     for (int i = 0; i < this.cache_assoc; i++) {
       if (lru_list[i][address_index_integer] == 0) {
         return i;
