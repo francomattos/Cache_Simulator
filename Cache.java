@@ -23,6 +23,8 @@ public class Cache {
   String[][] cache_memory;
   TraceObject trace_list[];
   LRUInterface lru_object;
+  Cache prevCache = null;
+  Cache nextCache = null;
 
   public Cache(int block_size, int cache_size, int cache_assoc, int replacement_policy, int inclusion_property,
       TraceObject trace_list[]) {
@@ -65,7 +67,10 @@ public class Cache {
     this.cache_memory = new String[this.cache_assoc][this.sets];
   }
 
-  public String checkCache(int trace_index, Cache next_cache) {
+  public String checkCache(int trace_index, String op_code) {
+    if (op_code == null) {
+      op_code = this.trace_list[trace_index].op_code;
+    }
     String binary_address = this.trace_list[trace_index].binary_address;
     // Get index and tag, we don't care for block offset in this project.
     String address_index = binary_address.substring(31 - (this.index_offset + this.block_offset),
@@ -77,35 +82,40 @@ public class Cache {
     int address_index_integer = Integer.parseInt(address_index, 2);
     int assoc_index;
 
-    // INCLUSION_PROPERTY: Positive integer. 0 for non-inclusive, 1 for inclusive.
     for (assoc_index = 0; assoc_index < this.cache_assoc; assoc_index++) {
       if (cache_memory[assoc_index][address_index_integer] != null
-          && cache_memory[assoc_index][address_index_integer].compareTo(address_tag) == 0) {
+          && cache_memory[assoc_index][address_index_integer].substring(1).compareTo(address_tag) == 0) {
         // If found, update read hits and mark access in LRU.
-        if (this.trace_list[trace_index].op_code.equals("r")) {
+        if (op_code.equals("r")) {
           this.read_hits++;
         } else {
+          // This makes it dirty
+          cache_memory[assoc_index][address_index_integer] = "1" + address_tag;
           this.write_hits++;
         }
-        System.out.println("Hit");
+        // Every access must be registered in LRU policy.
         lru_object.cacheAccess(assoc_index, address_index_integer, trace_index, binary_address);
-        return address_tag;
+        return null;
       }
     }
-    if (this.trace_list[trace_index].op_code.equals("r")) {
+    // INCLUSION_PROPERTY: Positive integer. 0 for non-inclusive, 1 for inclusive.
+    if (op_code.equals("r")) {
       this.read_misses++;
+      this.nextCache.checkCache(trace_index, null);
+      // On exclusive, read misses do not cause write if cache is not l1.
+      if (this.inclusion_property == 0 && this.prevCache != null) {
+        return null;
+      }
     } else {
       this.write_misses++;
     }
-    System.out.println("Miss");
-    // *******
-    // What to do if a miss here. The following code is placeholder
-    // *******
+    
+
     assoc_index = lru_object.getLRU(address_index_integer);
     lru_object.cacheAccess(assoc_index, address_index_integer, trace_index, binary_address);
-    cache_memory[assoc_index][address_index_integer] = address_tag;
+    cache_memory[assoc_index][address_index_integer] = "0" + address_tag;
 
-    return address_tag;
+    return null;
   }
 }
 
