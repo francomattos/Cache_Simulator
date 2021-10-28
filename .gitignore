@@ -2,3 +2,4 @@ traces/*
 validation_runs/
 MP1_Instructions.pdf
 *.txt
+*.class
