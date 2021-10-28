@@ -47,6 +47,38 @@ public class CacheSimulator {
     for (int i = 0; i < trace_list.length; i++) {
       this.l1_cache.checkCache(i, null, null);
     }
+    // Translates replacement policy to text for output.
+    String replacement_policy_string = "";
+    switch (replacement_policy) {
+    case 0:
+      replacement_policy_string = "LRU";
+      break;
+    case 1:
+      replacement_policy_string = "PLRU";
+      break;
+    case 2:
+      replacement_policy_string = "Optimal";
+      break;
+    default:
+      System.out.println("Unsupported Replacement Policy, 0 for LRU, 1 for PLRU, 2 for Optimal.");
+      System.exit(0);
+    }
+
+    // Translates inclusion property to text for output.
+    String inclusion_property_string = "";
+    switch (inclusion_property) {
+    case 0:
+      inclusion_property_string = "non-inclusive";
+      break;
+    case 1:
+      inclusion_property_string = "inclusive";
+      break;
+
+    default:
+      System.out.println("Unsupported inclusion property, 0 for non-inclusive, 1 for inclusive.");
+      System.exit(0);
+    }
+
     String outputResult = String.format("""
         ===== Simulator configuration =====
         BLOCKSIZE:             %s
@@ -56,8 +88,8 @@ public class CacheSimulator {
         L2_ASSOC:              %s
         REPLACEMENT POLICY:    %s
         INCLUSION PROPERTY:    %s
-        trace_file:            %s""", block_size, l1_size, l1_assoc, l2_size, l2_assoc, replacement_policy,
-        inclusion_property, trace_file_name);
+        trace_file:            %s""", block_size, l1_size, l1_assoc, l2_size, l2_assoc, replacement_policy_string,
+        inclusion_property_string, trace_file_name);
     outputResult += "\n";
 
     printOutput(outputResult, this.l1_cache, this.l2_cache);
@@ -66,8 +98,34 @@ public class CacheSimulator {
 
   private void printOutput(String outputResult, Cache l1_cache, Cache l2_Cache) {
 
-    double l1_missrate = ((double) l1_cache.write_hits + l1_cache.write_misses)
-        / (l1_cache.read_hits + l1_cache.read_misses);
+    if (l1_cache != null) {
+      outputResult += "===== L1 contents =====";
+      outputResult += "\n";
+      String set_line = "";
+      String dirty_bit = "";
+      String hex_address = "";
+      String address = "";
+      char first_bit = 0;
+      for (int set = 0; set < l1_cache.sets; set++) {
+        for (int assoc_index = 0; assoc_index < l1_cache.cache_assoc; assoc_index++) {
+          address = l1_cache.cache_memory[assoc_index][set];
+          first_bit = address.charAt(0);
+          if (first_bit == '1') {
+            dirty_bit = " D 	";
+          } else {
+            dirty_bit = "  	";
+          }
+          hex_address = binaryToHex(address.substring(1));
+          set_line += hex_address.toLowerCase() + dirty_bit;
+        }
+        outputResult += "Set     " + set + ":	" + set_line;
+        outputResult += "\n";
+        set_line = "";
+      }
+    }
+
+    double l1_missrate = ((double) l1_cache.read_misses + l1_cache.write_misses)
+        / (l1_cache.read_hits + l1_cache.write_hits);
     outputResult += String.format("""
         ===== Simulation results (raw) =====
         a. number of L1 reads:        %s

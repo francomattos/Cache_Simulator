@@ -68,7 +68,6 @@ public class Cache {
   }
 
   public String checkCache(int trace_index, String op_code, String binary_address) {
-    System.out.println(trace_index);
     if (op_code == null) {
       op_code = this.trace_list[trace_index].op_code;
     }
@@ -86,16 +85,18 @@ public class Cache {
     int address_index_integer = Integer.parseInt(address_index, 2);
     int assoc_index;
 
+    if (op_code.equals("r")) {
+      this.read_hits++;
+    } else if (op_code.equals("w")) {
+      this.write_hits++;
+    }
+
     for (assoc_index = 0; assoc_index < this.cache_assoc; assoc_index++) {
       if (cache_memory[assoc_index][address_index_integer] != null
           && cache_memory[assoc_index][address_index_integer].substring(1).compareTo(address_tag) == 0) {
-        // If found, update read hits and mark access in LRU.
-        if (op_code.equals("r")) {
-          this.read_hits++;
-        } else {
-          // This makes it dirty
+        if (op_code.equals("w")) {
+          // Writes to existing indexes makes it dirty
           cache_memory[assoc_index][address_index_integer] = "1" + address_tag;
-          this.write_hits++;
         }
         // Every access must be registered in LRU policy.
         lru_object.cacheAccess(assoc_index, address_index_integer, trace_index, binary_address);
@@ -121,14 +122,17 @@ public class Cache {
     if (cache_memory[assoc_index][address_index_integer] != null) {
       // Check for dirty bit bit.
       char first_bit = cache_memory[assoc_index][address_index_integer].charAt(0);
-      if (first_bit == 1) {
+      if (first_bit == '1') {
+        // If bit is dirty, trigger write back
         this.write_back++;
       }
-
+      // cache_memory[assoc_index][address_index_integer] = "1" + address_tag;
+    } else {
+      // cache_memory[assoc_index][address_index_integer] = "0" + address_tag;
     }
-
-    // Peform write.
+    // Since we are doing an eviction, new bit is not dirty.
     cache_memory[assoc_index][address_index_integer] = "0" + address_tag;
+
     return null;
   }
 }
@@ -239,10 +243,11 @@ class PseudoLRU extends LRU implements LRUInterface {
       }
     }
     // After converging, return value.
-    if (mid >= cache_assoc) {
-      mid = cache_assoc - 1;
+    int result = mid + lru_list[address_index_integer][mid];
+    if (result >= sets) {
+      result = sets - 1;
     }
-    return mid + lru_list[address_index_integer][mid];
+    return result;
   }
 
 }
