@@ -68,6 +68,7 @@ public class Cache {
   }
 
   public String checkCache(int trace_index, String op_code, String binary_address) {
+    System.out.println(trace_index);
     if (op_code == null) {
       op_code = this.trace_list[trace_index].op_code;
     }
@@ -75,7 +76,6 @@ public class Cache {
       binary_address = this.trace_list[trace_index].binary_address;
     }
 
-    
     // Get index and tag, we don't care for block offset in this project.
     String address_index = binary_address.substring(31 - (this.index_offset + this.block_offset),
         31 - this.block_offset);
@@ -99,48 +99,36 @@ public class Cache {
         }
         // Every access must be registered in LRU policy.
         lru_object.cacheAccess(assoc_index, address_index_integer, trace_index, binary_address);
+        // Hits do not cascade, so we end.
         return null;
       }
     }
 
-    // Handling read miss, it must read from lower cache.
     if (op_code.equals("r")) {
       this.read_misses++;
+      // Read miss cascade to lower cache.
       if (this.nextCache != null) {
         this.nextCache.checkCache(trace_index, null, null);
-      }
-      // On exclusive, read misses do not cause write if cache is not l1.
-      if (this.inclusion_property == 0 && this.prevCache != null) {
-        return null;
       }
     } else {
       // If not read, then we just increment write counter.
       this.write_misses++;
     }
-    // At this point, a write will for sure happen, so we get LRU
+    // Read and write misses will trigger a write.
     assoc_index = lru_object.getLRU(address_index_integer);
-    lru_object.cacheAccess(assoc_index, address_index_integer, trace_index, binary_address); 
+    lru_object.cacheAccess(assoc_index, address_index_integer, trace_index, binary_address);
 
-    // INCLUSION_PROPERTY: Positive integer. 0 for non-inclusive, 1 for inclusive.
-    // Writing to an empty spot.
-    if (cache_memory[assoc_index][address_index_integer] == null) {
-      cache_memory[assoc_index][address_index_integer] = "0" + address_tag;
-    } else {
-      // handling eviction, this will create a write back.
-      this.write_back++;
-      // If exclusive and there is a lower chache, then send eviction down.
-      // if (this.inclusion_property == 0 && this.nextCache != null) {
-      //   String replace_tag = cache_memory[assoc_index][address_index_integer].substring(1);
-      //   String block_append = binary_address.substring(replace_tag.length());
-      //   this.nextCache.checkCache(trace_index, "w", replace_tag + block_append);
-      // }
-      // Write block as dirty.
-      cache_memory[assoc_index][address_index_integer] = "1" + address_tag;
+    if (cache_memory[assoc_index][address_index_integer] != null) {
+      // Check for dirty bit bit.
+      char first_bit = cache_memory[assoc_index][address_index_integer].charAt(0);
+      if (first_bit == 1) {
+        this.write_back++;
+      }
+
     }
-    // For inclusive and non-inclusive policy, write to next.
-    if (this.inclusion_property == 1 || this.inclusion_property == 0) {
-      this.nextCache.checkCache(trace_index, "w", null);
-    }
+
+    // Peform write.
+    cache_memory[assoc_index][address_index_integer] = "0" + address_tag;
     return null;
   }
 }
@@ -176,7 +164,6 @@ class BasicLRU extends LRU implements LRUInterface {
   // When accessing block, assign counter value to set, making it largest.
   public void cacheAccess(int assoc_index, int address_index_integer, int traceIndex, String binary_address) {
     this.counters++;
-    System.out.println(assoc_index + " " + address_index_integer);
     lru_list[assoc_index][address_index_integer] = this.counters;
   }
 

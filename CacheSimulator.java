@@ -48,46 +48,38 @@ public class CacheSimulator {
       this.l1_cache.checkCache(i, null, null);
     }
     String outputResult = String.format("""
-    ===== Simulator configuration =====
-    BLOCKSIZE:             %s
-    L1_SIZE:               %s
-    L1_ASSOC:              %s
-    L2_SIZE:               %s
-    L2_ASSOC:              %s
-    REPLACEMENT POLICY:    %s
-    INCLUSION PROPERTY:    %s
-    trace_file:            %s""",
-     block_size, l1_size, l1_assoc, l2_size, l2_assoc, 
-     replacement_policy, inclusion_property, trace_file_name);
+        ===== Simulator configuration =====
+        BLOCKSIZE:             %s
+        L1_SIZE:               %s
+        L1_ASSOC:              %s
+        L2_SIZE:               %s
+        L2_ASSOC:              %s
+        REPLACEMENT POLICY:    %s
+        INCLUSION PROPERTY:    %s
+        trace_file:            %s""", block_size, l1_size, l1_assoc, l2_size, l2_assoc, replacement_policy,
+        inclusion_property, trace_file_name);
     outputResult += "\n";
 
     printOutput(outputResult, this.l1_cache, this.l2_cache);
-    
 
   }
 
   private void printOutput(String outputResult, Cache l1_cache, Cache l2_Cache) {
 
-
-
-
-    
-    double l1_missrate = ((double)l1_cache.write_hits+l1_cache.write_misses)/(l1_cache.read_hits+l1_cache.read_misses);
+    double l1_missrate = ((double) l1_cache.write_hits + l1_cache.write_misses)
+        / (l1_cache.read_hits + l1_cache.read_misses);
     outputResult += String.format("""
-    ===== Simulation results (raw) =====
-    a. number of L1 reads:        %s
-    b. number of L1 read misses:  %s
-    c. number of L1 writes:       %s
-    d. number of L1 write misses: %s
-    e. L1 miss rate:              %.6f
-    f. number of L1 writebacks:   %s
-     """, l1_cache.read_hits, l1_cache.read_misses, 
-     l1_cache.write_hits, l1_cache.write_misses, 
-     l1_missrate, 
-     l1_cache.write_back);
+        ===== Simulation results (raw) =====
+        a. number of L1 reads:        %s
+        b. number of L1 read misses:  %s
+        c. number of L1 writes:       %s
+        d. number of L1 write misses: %s
+        e. L1 miss rate:              %.6f
+        f. number of L1 writebacks:   %s
+         """, l1_cache.read_hits, l1_cache.read_misses, l1_cache.write_hits, l1_cache.write_misses, l1_missrate,
+        l1_cache.write_back);
     System.out.print(outputResult);
   }
-      
 
   private TraceObject[] loadFile(String trace_file_name) {
     // Loads file.
@@ -113,11 +105,12 @@ public class CacheSimulator {
 
       // Goes through each line of file, extracts opcode and address.
       while (trace_file_read.hasNextLine()) {
-        System.out.println(trace_index);
         String[] trace_file_line = trace_file_read.nextLine().split(" ");
-        String op_code = trace_file_line[0];
-        String hex_address = trace_file_line[1];
-        trace_list[trace_index] = new TraceObject(op_code, hexToBinary(hex_address));
+        if (trace_file_line.length > 1) {
+          String op_code = trace_file_line[0];
+          String hex_address = trace_file_line[1];
+          trace_list[trace_index] = new TraceObject(op_code, hexToBinary(hex_address));
+        }
         trace_index++;
       }
       trace_file_read.close();
