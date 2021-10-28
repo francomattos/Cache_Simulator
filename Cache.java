@@ -76,6 +76,7 @@ public class Cache {
     }
 
     // Get index and tag, we don't care for block offset in this project.
+    String address_offset = binary_address.substring(31 - this.block_offset);
     String address_index = binary_address.substring(31 - (this.index_offset + this.block_offset),
         31 - this.block_offset);
     String address_tag = binary_address.substring(0, 31 - (this.index_offset + this.block_offset));
@@ -99,39 +100,47 @@ public class Cache {
           cache_memory[assoc_index][address_index_integer] = "1" + address_tag;
         }
         // Every access must be registered in LRU policy.
-        lru_object.cacheAccess(assoc_index, address_index_integer, trace_index, binary_address);
+        lru_object.cacheAccess(assoc_index, address_index_integer, trace_index, address_tag + address_index);
         // Hits do not cascade, so we end.
         return null;
       }
     }
 
+    // Read/write miss cascade to lower cache as read.
+    if (this.nextCache != null) {
+      this.nextCache.checkCache(trace_index, "r", null);
+    }
+
     if (op_code.equals("r")) {
       this.read_misses++;
-      // Read miss cascade to lower cache.
-      if (this.nextCache != null) {
-        this.nextCache.checkCache(trace_index, null, null);
-      }
     } else {
-      // If not read, then we just increment write counter.
       this.write_misses++;
     }
     // Read and write misses will trigger a write.
     assoc_index = lru_object.getLRU(address_index_integer);
-    lru_object.cacheAccess(assoc_index, address_index_integer, trace_index, binary_address);
+    lru_object.cacheAccess(assoc_index, address_index_integer, trace_index, address_tag + address_index);
 
     if (cache_memory[assoc_index][address_index_integer] != null) {
       // Check for dirty bit bit.
       char first_bit = cache_memory[assoc_index][address_index_integer].charAt(0);
       if (first_bit == '1') {
         // If bit is dirty, trigger write back
+        if (this.nextCache != null) {
+          String current_tag = cache_memory[assoc_index][address_index_integer].substring(1);
+          this.nextCache.checkCache(trace_index, "w", current_tag + address_index + address_offset);
+        }
+
         this.write_back++;
       }
-      // cache_memory[assoc_index][address_index_integer] = "1" + address_tag;
-    } else {
-      // cache_memory[assoc_index][address_index_integer] = "0" + address_tag;
     }
+
+    // "dirty_indicator" + "tag"
     // Since we are doing an eviction, new bit is not dirty.
-    cache_memory[assoc_index][address_index_integer] = "0" + address_tag;
+    if (op_code.equals("r")) {
+      cache_memory[assoc_index][address_index_integer] = "0" + address_tag;
+    } else {
+      cache_memory[assoc_index][address_index_integer] = "1" + address_tag;
+    }
 
     return null;
   }
@@ -265,9 +274,10 @@ class OptimalLRU extends LRU implements LRUInterface {
   public void cacheAccess(int assoc_index, int address_index_integer, int trace_index, String binary_address) {
     // We will look for 0 values as possibility of replacement, this is placeholder.
     lru_list[assoc_index][address_index_integer] = 0;
+    trace_index++;
     // Loop through trace_list to find next occurance of address.
     for (int i = trace_index; i < this.trace_list.length; i++) {
-      if (this.trace_list[i].binary_address.compareTo(binary_address) == 0) {
+      if (this.trace_list[i].binary_address.substring(0, binary_address.length()).compareTo(binary_address) == 0) {
         lru_list[assoc_index][address_index_integer] = i;
         break;
       }
@@ -279,10 +289,11 @@ class OptimalLRU extends LRU implements LRUInterface {
     int next_LRU = 0;
     // Finds block with access furthest in the future.
     for (int i = 0; i < this.cache_assoc; i++) {
+      // System.out.println(lru_list[i][address_index_integer]);
       if (lru_list[i][address_index_integer] == 0) {
         return i;
-      } else if (lru_list[i][address_index_integer] > next_LRU) {
-        next_LRU = lru_list[i][address_index_integer];
+      } else if (lru_list[i][address_index_integer] > lru_list[next_LRU][address_index_integer]) {
+        next_LRU = i;
       }
     }
     return next_LRU;

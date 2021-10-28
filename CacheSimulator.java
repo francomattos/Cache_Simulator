@@ -54,7 +54,7 @@ public class CacheSimulator {
       replacement_policy_string = "LRU";
       break;
     case 1:
-      replacement_policy_string = "PLRU";
+      replacement_policy_string = "Pseudo-LRU";
       break;
     case 2:
       replacement_policy_string = "Optimal";
@@ -96,7 +96,7 @@ public class CacheSimulator {
 
   }
 
-  private void printOutput(String outputResult, Cache l1_cache, Cache l2_Cache) {
+  private void printOutput(String outputResult, Cache l1_cache, Cache l2_cache) {
 
     if (l1_cache != null) {
       outputResult += "===== L1 contents =====";
@@ -109,6 +109,35 @@ public class CacheSimulator {
       for (int set = 0; set < l1_cache.sets; set++) {
         for (int assoc_index = 0; assoc_index < l1_cache.cache_assoc; assoc_index++) {
           address = l1_cache.cache_memory[assoc_index][set];
+          first_bit = address.charAt(0);
+          if (first_bit == '1') {
+            dirty_bit = " D 	";
+          } else {
+            dirty_bit = "  	";
+          }
+          hex_address = binaryToHex(address.substring(1));
+          set_line += hex_address.toLowerCase() + dirty_bit;
+        }
+        outputResult += "Set     " + set + ":	" + set_line;
+        outputResult += "\n";
+        set_line = "";
+      }
+    } else {
+      System.out.println("Error loading cache 1");
+      System.exit(0);
+    }
+
+    if (l2_cache != null) {
+      outputResult += "===== L2 contents =====";
+      outputResult += "\n";
+      String set_line = "";
+      String dirty_bit = "";
+      String hex_address = "";
+      String address = "";
+      char first_bit = 0;
+      for (int set = 0; set < l2_cache.sets; set++) {
+        for (int assoc_index = 0; assoc_index < l2_cache.cache_assoc; assoc_index++) {
+          address = l2_cache.cache_memory[assoc_index][set];
           first_bit = address.charAt(0);
           if (first_bit == '1') {
             dirty_bit = " D 	";
@@ -136,7 +165,34 @@ public class CacheSimulator {
         f. number of L1 writebacks:   %s
          """, l1_cache.read_hits, l1_cache.read_misses, l1_cache.write_hits, l1_cache.write_misses, l1_missrate,
         l1_cache.write_back);
+
+    if (l2_cache == null) {
+      outputResult += String.format("""
+          g. number of L2 reads:        0
+          h. number of L2 read misses:  0
+          i. number of L2 writes:       0
+          j. number of L2 write misses: 0
+          k. L2 miss rate:              0
+          l. number of L2 writebacks:   0
+          m. total memory traffic:      %s
+                     """, l1_cache.read_misses + l1_cache.write_misses + l1_cache.write_back);
+    } else {
+      double l2_missrate = ((double) l2_cache.read_misses + l2_cache.write_misses)
+          / (l2_cache.read_hits + l2_cache.write_hits);
+      outputResult += String.format("""
+          g. number of L2 reads:        %s
+          h. number of L2 read misses:  %s
+          i. number of L2 writes:       %s
+          j. number of L2 write misses: %s
+          k. L2 miss rate:              %.6f
+          l. number of L2 writebacks:   %s
+          m. total memory traffic:      %s
+                     """, l2_cache.read_hits, l2_cache.read_misses, l2_cache.write_hits, l2_cache.write_misses,
+          l2_missrate, l2_cache.write_back, l2_cache.read_misses + l2_cache.write_misses + l2_cache.write_back);
+    }
+
     System.out.print(outputResult);
+
   }
 
   private TraceObject[] loadFile(String trace_file_name) {
