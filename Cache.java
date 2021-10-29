@@ -13,6 +13,7 @@ public class Cache {
   public int write_hits = 0;
   public int write_misses = 0;
   public int write_back = 0;
+  public int mem_trafic = 0;
 
   public int sets;
   public int block_offset;
@@ -96,7 +97,12 @@ public class Cache {
     for (assoc_index = 0; assoc_index < this.cache_assoc; assoc_index++) {
       if (cache_memory[assoc_index][address_index_integer] != null
           && cache_memory[assoc_index][address_index_integer].substring(1).compareTo(address_tag) == 0) {
-        if (op_code.equals("w")) {
+        if (op_code.equals("x")) {
+          this.mem_trafic++;
+          cache_memory[assoc_index][address_index_integer] = null;
+          lru_object.resetTag(assoc_index, address_index_integer);
+          return null;
+        } else if (op_code.equals("w")) {
           // Writes to existing indexes makes it dirty
           cache_memory[assoc_index][address_index_integer] = "1" + address_tag;
         }
@@ -105,6 +111,9 @@ public class Cache {
         // Hits do not cascade, so we end.
         return null;
       }
+    }
+    if (op_code.equals("x")) {
+      return null;
     }
     // At this point, a miss has occurred
     if (op_code.equals("r")) {
@@ -124,9 +133,13 @@ public class Cache {
         // If bit is dirty, trigger write back
         this.write_back++;
         // Write back triggers a write to next level cache or memory.
+        String current_tag = cache_memory[assoc_index][address_index_integer].substring(1);
         if (this.nextCache != null) {
-          String current_tag = cache_memory[assoc_index][address_index_integer].substring(1);
           this.nextCache.checkCache(trace_index, "w", current_tag + address_index + address_offset);
+        }
+        // for inclusive, must invalidate previous cache
+        if (this.inclusion_property == 1 && this.prevCache != null) {
+          this.prevCache.checkCache(trace_index, "x", current_tag + address_index + address_offset);
         }
       }
     }
@@ -160,12 +173,19 @@ class LRU {
     this.sets = sets;
     this.cache_assoc = cache_assoc;
   }
+
+  public void resetTag(int assoc_index, int address_index_integer) {
+    this.lru_list[assoc_index][address_index_integer] = 0;
+  }
 }
 
 interface LRUInterface {
+  public void resetTag(int assoc_index, int address_index_integer);
+
   public void cacheAccess(int assoc_index, int address_index_integer, int traceIndex, String binary_address);
 
   public int getLRU(int address_index_integer);
+
 }
 
 // BasicLRU type, increments counter and find smallest one as the LRU.
@@ -202,7 +222,7 @@ class PseudoLRU extends LRU implements LRUInterface {
 
   public PseudoLRU(int cache_assoc, int sets) {
     // Reverts order or cache assoc and sets.
-    super(sets, cache_assoc);
+    super(cache_assoc, sets);
     // Initiates all values to 1, so when we look for free we look to left.
     for (int[] fill_array : super.lru_list) {
       Arrays.fill(fill_array, 1);
@@ -211,11 +231,11 @@ class PseudoLRU extends LRU implements LRUInterface {
 
   // When accessing block, marks latest access to the set
   public void cacheAccess(int assoc_index, int address_index_integer, int traceIndex, String binary_address) {
-    setCacheAccess(address_index_integer, 0, super.sets - 1, assoc_index);
+    setCacheAccess(address_index_integer, 0, super.cache_assoc - 1, assoc_index);
   }
 
   public int getLRU(int address_index_integer) {
-    return getPseudoLRU(address_index_integer, 0, super.sets - 1);
+    return getPseudoLRU(address_index_integer, 0, super.cache_assoc - 1);
   }
 
   // Essentially a binary search setting the values to 0 and 1 as it finds the
@@ -229,10 +249,10 @@ class PseudoLRU extends LRU implements LRUInterface {
       // If value is to left of mid index mark as 0, if to right mark as 1.
       // Recursive call to that branch of tree.
       if (assoc_index <= mid) {
-        lru_list[address_index_integer][mid] = 0;
+        lru_list[mid][address_index_integer] = 0;
         setCacheAccess(address_index_integer, left_index, mid - 1, assoc_index);
       } else {
-        lru_list[address_index_integer][mid] = 1;
+        lru_list[mid][address_index_integer] = 1;
         setCacheAccess(address_index_integer, mid + 1, right_index, assoc_index);
       }
     }
@@ -246,18 +266,18 @@ class PseudoLRU extends LRU implements LRUInterface {
       // Pick mid point of array.
       mid = left_index + (right_index - left_index) / 2;
       // If value 1, go left, if 0, go right
-      if (lru_list[address_index_integer][mid] == 1) {
-        lru_list[address_index_integer][mid] = 0;
+      if (lru_list[mid][address_index_integer] == 1) {
+        lru_list[mid][address_index_integer] = 0;
         right_index = mid - 1;
       } else {
-        lru_list[address_index_integer][mid] = 1;
+        lru_list[mid][address_index_integer] = 1;
         left_index = mid + 1;
       }
     }
     // After converging, return value.
-    int result = mid + lru_list[address_index_integer][mid];
-    if (result >= sets) {
-      result = sets - 1;
+    int result = mid + lru_list[mid][address_index_integer];
+    if (result >= this.cache_assoc) {
+      result = this.cache_assoc - 1;
     }
     return result;
   }

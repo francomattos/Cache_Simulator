@@ -175,7 +175,7 @@ public class CacheSimulator {
           k. L2 miss rate:              0
           l. number of L2 writebacks:   0
           m. total memory traffic:      %s
-                     """, l1_cache.read_misses + l1_cache.write_misses + l1_cache.write_back);
+                     """, l1_cache.read_misses + l1_cache.write_misses + l1_cache.write_back + l1_cache.mem_trafic);
     } else {
       double l2_missrate = ((double) l2_cache.read_misses) / (l2_cache.read_hits);
       outputResult += String.format("""
@@ -187,7 +187,8 @@ public class CacheSimulator {
           l. number of L2 writebacks:   %s
           m. total memory traffic:      %s
                      """, l2_cache.read_hits, l2_cache.read_misses, l2_cache.write_hits, l2_cache.write_misses,
-          l2_missrate, l2_cache.write_back, l2_cache.read_misses + l2_cache.write_misses + l2_cache.write_back);
+          l2_missrate, l2_cache.write_back, l2_cache.read_misses + l2_cache.write_misses + l2_cache.write_back
+              + l1_cache.mem_trafic + l2_cache.mem_trafic);
     }
 
     System.out.print(outputResult);
