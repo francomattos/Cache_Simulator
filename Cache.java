@@ -92,6 +92,7 @@ public class Cache {
       this.write_hits++;
     }
 
+    // Check for existance of tag, if it exists, ends.
     for (assoc_index = 0; assoc_index < this.cache_assoc; assoc_index++) {
       if (cache_memory[assoc_index][address_index_integer] != null
           && cache_memory[assoc_index][address_index_integer].substring(1).compareTo(address_tag) == 0) {
@@ -105,17 +106,13 @@ public class Cache {
         return null;
       }
     }
-
-    // Read/write miss cascade to lower cache as read.
-    if (this.nextCache != null) {
-      this.nextCache.checkCache(trace_index, "r", null);
-    }
-
+    // At this point, a miss has occurred
     if (op_code.equals("r")) {
       this.read_misses++;
     } else {
       this.write_misses++;
     }
+
     // Read and write misses will trigger a write.
     assoc_index = lru_object.getLRU(address_index_integer);
     lru_object.cacheAccess(assoc_index, address_index_integer, trace_index, address_tag + address_index);
@@ -125,13 +122,18 @@ public class Cache {
       char first_bit = cache_memory[assoc_index][address_index_integer].charAt(0);
       if (first_bit == '1') {
         // If bit is dirty, trigger write back
+        this.write_back++;
+        // Write back triggers a write to next level cache or memory.
         if (this.nextCache != null) {
           String current_tag = cache_memory[assoc_index][address_index_integer].substring(1);
           this.nextCache.checkCache(trace_index, "w", current_tag + address_index + address_offset);
         }
-
-        this.write_back++;
       }
+    }
+
+    // Read/write miss cascade to lower cache as read.
+    if (this.nextCache != null) {
+      this.nextCache.checkCache(trace_index, "r", null);
     }
 
     // "dirty_indicator" + "tag"
@@ -188,6 +190,7 @@ class BasicLRU extends LRU implements LRUInterface {
     for (int i = 1; i < super.cache_assoc; i++) {
       if (lru_list[i][address_index_integer] < lru_count) {
         lru_results = i;
+        lru_count = lru_list[i][address_index_integer];
       }
     }
     return lru_results;

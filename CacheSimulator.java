@@ -177,8 +177,7 @@ public class CacheSimulator {
           m. total memory traffic:      %s
                      """, l1_cache.read_misses + l1_cache.write_misses + l1_cache.write_back);
     } else {
-      double l2_missrate = ((double) l2_cache.read_misses + l2_cache.write_misses)
-          / (l2_cache.read_hits + l2_cache.write_hits);
+      double l2_missrate = ((double) l2_cache.read_misses) / (l2_cache.read_hits);
       outputResult += String.format("""
           g. number of L2 reads:        %s
           h. number of L2 read misses:  %s
