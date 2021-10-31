@@ -47,6 +47,9 @@ public class CacheSimulator {
     for (int i = 0; i < trace_list.length; i++) {
       this.l1_cache.checkCache(i, null, null);
     }
+    // The code below this point is essentially creating the output to terminal in
+    // appropriate format.
+
     // Translates replacement policy to text for output.
     String replacement_policy_string = "";
     switch (replacement_policy) {
@@ -79,6 +82,8 @@ public class CacheSimulator {
       System.exit(0);
     }
 
+    // Output result is string variable that holds the final output.
+    // We will be appending to this string for each section of the output.
     String outputResult = String.format("""
         ===== Simulator configuration =====
         BLOCKSIZE:             %s
@@ -91,13 +96,16 @@ public class CacheSimulator {
         trace_file:            %s""", block_size, l1_size, l1_assoc, l2_size, l2_assoc, replacement_policy_string,
         inclusion_property_string, trace_file_name);
     outputResult += "\n";
-
+    // To keep things neat, the output from l1 and l2 cache will be added from a
+    // helper function.
     printOutput(outputResult, this.l1_cache, this.l2_cache);
 
   }
 
+  // Helper function to format the output.
   private void printOutput(String outputResult, Cache l1_cache, Cache l2_cache) {
-
+    // From here on, we creat lines based on the output desired from l1 and l2
+    // cache.
     if (l1_cache != null) {
       outputResult += "===== L1 contents =====";
       outputResult += "\n";
@@ -190,7 +198,7 @@ public class CacheSimulator {
           l2_missrate, l2_cache.write_back, l2_cache.read_misses + l2_cache.write_misses + l2_cache.write_back
               + l1_cache.mem_trafic + l2_cache.mem_trafic);
     }
-
+    // Finally create output.
     System.out.print(outputResult);
 
   }
