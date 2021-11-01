@@ -205,11 +205,28 @@ public class CacheSimulator {
 
   private TraceObject[] loadFile(String trace_file_name) {
     // Loads file.
-    File trace_file = new File(trace_file_name);
+    File trace_file = new File(System.getProperty("user.dir") + "\\" + trace_file_name);
+    // Did not mention if trace files would be on current directory or a traces subdirectory so lets check.
+    String file_path = trace_file_name;
+    if (trace_file.exists() != true) {
+      file_path = System.getProperty("user.dir") + "/" + trace_file_name;
+      trace_file = new File(file_path);
+     
+    }
+    if (trace_file.exists() != true) {
+      file_path = System.getProperty("user.dir") + "\\traces\\" + trace_file_name;
+      trace_file = new File(file_path);
+      
+    }
+    if (trace_file.exists() != true) {
+      file_path = System.getProperty("user.dir") + "/traces/" + trace_file_name;
+      trace_file = new File(file_path);
+     
+    }
     TraceObject trace_list[];
     try {
       // Reads number of lines in file.
-      this.trace_file_lines = (int) Files.lines(Paths.get(trace_file_name)).count();
+      this.trace_file_lines = (int) Files.lines(Paths.get(file_path)).count();
 
     } catch (Exception e) {
       System.out.println("Unable to open file");

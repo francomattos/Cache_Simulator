@@ -69,6 +69,9 @@ public class Cache {
   }
 
   public String checkCache(int trace_index, String op_code, String binary_address) {
+    if (this.trace_list[trace_index] == null) {
+      return null;
+    }
     if (op_code == null) {
       op_code = this.trace_list[trace_index].op_code;
     }
@@ -84,7 +87,12 @@ public class Cache {
 
     // Converts binary address_index to an integer number since we will use it as an
     // index.
-    int address_index_integer = Integer.parseInt(address_index, 2);
+    int address_index_integer = 0;
+    if (address_index.length() == 0) {
+      address_index_integer = 0;
+    } else {
+      address_index_integer = Integer.parseInt(address_index, 2);
+    }
     int assoc_index;
 
     if (op_code.equals("r")) {
